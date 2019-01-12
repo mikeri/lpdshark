@@ -34,20 +34,24 @@ def debug(message):
     if args.debug:
         print(message)
 
+def status(message):
+    rows, columns = os.popen('stty size', 'r').read().split()
+    spaces = int(rows) - len(message)
+    print(message, flush=True, end=' ' * spaces + '\r')
+
 def main():
     job = 0
     stream = 0
     output = subprocess.run(f'tshark -r {args.file} | wc -l', shell=True, stdout=subprocess.PIPE)
     length = int(output.stdout)
-    rows, columns = os.popen('stty size', 'r').read().split()
     for i, packet in enumerate(cap):
         percent = int(i / length * 100)
         if not (i+1) % 10:
-            print(f"Parsing: {percent}% done. Jobs found: {job}", end='\r', flush=True)
+            status(f"Parsing: {percent}% done. Jobs found: {job}")
         if hasattr(packet, 'lpd') and stream != int(packet.tcp.stream):
             stream = int(packet.tcp.stream)
             job += 1
-            job_data = get_job(i-1, stream)
+            job_data = get_job(i-1, stream, percent, job)
             base_name = args.outfile
             if not base_name:
                 # HP job name
@@ -74,7 +78,7 @@ def main():
                 exit()
             job_file.write(job_data)
             job_file.close()
-            print("Saved " + file_path + "               ", flush=True)
+            print("Saved " + file_path + "                                    ", flush=True)
             debug(f"Packet: {i} - Length: {len(job_data)}")
     print(f"Done! {job} jobs found.              ")
 
@@ -87,11 +91,13 @@ def pjl_attribute(job_data, attribute, **kwargs):
     else:
         return None
 
-def get_job(position, stream):
+def get_job(position, stream, percent, job):
+    status(f"Parsing: {percent}% done. Jobs found: {job} Extracting job...")
     header = True
     packet = cap[position]
     job_data = ''
     space = 0
+    job_stream = stream
     while True:
         try:
             packet = cap[position]
@@ -99,8 +105,8 @@ def get_job(position, stream):
             break
         position += 1
         space += 1
-        # if hasattr(packet.tcp, 'payload_raw'):
-        if hasattr(packet, 'lpd'):
+        debug(f"Packet number: {position} - Gap: {space}")
+        if hasattr(packet, 'lpd') and packet.tcp.stream == job_stream:
             space = 0
             if stream == int(packet.tcp.stream) and hasattr(packet.tcp, 'payload_raw'):
                 data = packet.tcp.payload_raw[0]
