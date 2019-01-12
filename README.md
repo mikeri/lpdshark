@@ -37,7 +37,9 @@ In order to view the print jobs you might want to convert them to PDF files. Pos
 print jobs can be converted with ps2pdf from ghostscript, and PCL jobs can be converted
 with GhostPCL. (https://ghostscript.com/download/gpcldnld.html)
 
-For converting many PCL files, the pcl2pdf.sh script can be used:
-`./pcl2pdf.sh prn pdf` will convert all PCL files in the "prn" directory to PDF files to
+For converting many PCL files, the onliner below (also found in `pcl2pdf.sh`) can be used.
+`$ ./pcl2pdf.sh prn pdf` will convert all PCL files in the "prn" directory to PDF files in
 the "pdf" directory. The script uses GNU Parallel as generating raster from PCL files ca
 be CPU intensive.
+
+`$ find prn/*.prn -printf '%f\n' | parallel -I {} gpcl6 -o pdf/{}.pdf -sDEVICE=pdfwrite $1/{}`
