@@ -54,11 +54,7 @@ def main():
             job_data = get_job(i, stream, percent, job, length)
             base_name = args.outfile
             if not base_name:
-                # HP job name
-                base_name = pjl_attribute(job_data, 'SET JOBNAME', default="")
-            if not base_name:
-                # Xerox job name
-                base_name = pjl_attribute(job_data, 'JOB NAME', default="printjob")
+                base_name = pjl_attribute(job_data, 'S?E?T?\s?JOB\s?NAME', default="printjob")
             if args.sequence:
                 sequence = '-' + str(stream)
             else:
