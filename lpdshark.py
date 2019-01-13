@@ -41,7 +41,7 @@ def status(message):
 
 def main():
     job = 0
-    stream = 0
+    stream = -1
     output = subprocess.run(f'tshark -r {args.file} | wc -l', shell=True, stdout=subprocess.PIPE)
     length = int(output.stdout)
     for i, packet in enumerate(cap):
@@ -51,7 +51,7 @@ def main():
         if hasattr(packet, 'lpd') and stream != int(packet.tcp.stream):
             stream = int(packet.tcp.stream)
             job += 1
-            job_data = get_job(i-1, stream, percent, job)
+            job_data = get_job(i, stream, percent, job, length)
             base_name = args.outfile
             if not base_name:
                 # HP job name
@@ -91,31 +91,35 @@ def pjl_attribute(job_data, attribute, **kwargs):
     else:
         return None
 
-def get_job(position, stream, percent, job):
+def end_of_job(packet, stream):
+    try:
+        if stream != int(packet.tcp.stream):
+            return False
+        debug("Packet flags:" + packet.tcp.flags)
+        return int(packet.tcp.flags, 16) & 1
+    except Exception:
+        return False
+
+def get_job(position, stream, percent, job, length):
     status(f"Parsing: {percent}% done. Jobs found: {job} Extracting job...")
     header = True
     packet = cap[position]
     job_data = ''
-    space = 0
-    job_stream = stream
-    while True:
-        try:
-            packet = cap[position]
-        except KeyError:
-            break
+    while not end_of_job(packet, stream) and position <= length:
         position += 1
-        space += 1
-        debug(f"Packet number: {position} - Gap: {space}")
-        if hasattr(packet, 'lpd') and packet.tcp.stream == job_stream:
-            space = 0
+        debug(f"Packet number: {position}")
+        if hasattr(packet, 'lpd') and int(packet.tcp.stream) == stream:
+            debug("LPD packet found.")
+            debug(stream)
+            debug(int(packet.tcp.stream))
             if stream == int(packet.tcp.stream) and hasattr(packet.tcp, 'payload_raw'):
+                debug(packet.tcp.payload_raw)
                 data = packet.tcp.payload_raw[0]
                 if len(data) > 256:
                     header = False
                 if packet.tcp.dstport == '515' and not header:
                     job_data += data
-        if space > 32:
-            break
+        packet = cap[position]
     return bytes.fromhex(job_data)
 
 main()
