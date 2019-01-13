@@ -115,10 +115,10 @@ def get_job(position, stream, percent, job, length):
             if stream == int(packet.tcp.stream) and hasattr(packet.tcp, 'payload_raw'):
                 debug(packet.tcp.payload_raw)
                 data = packet.tcp.payload_raw[0]
-                if len(data) > 256:
-                    header = False
                 if packet.tcp.dstport == '515' and not header:
                     job_data += data
+                if data[:2] == '03' and header:
+                    header = False
         packet = cap[position]
     return bytes.fromhex(job_data)
 
