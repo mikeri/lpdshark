@@ -45,7 +45,7 @@ def main():
     output = subprocess.run(f'tshark -r {args.file} | wc -l', shell=True, stdout=subprocess.PIPE)
     length = int(output.stdout)
     for i, packet in enumerate(cap):
-        percent = int(i / length * 100)
+        percent = int(i / (length) * 100) if length > 0 else 100
         if not (i+1) % 10:
             status(f"Parsing: {percent}% done. Jobs found: {job}")
         if hasattr(packet, 'lpd') and stream != int(packet.tcp.stream):
